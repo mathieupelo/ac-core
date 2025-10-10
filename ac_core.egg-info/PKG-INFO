@@ -1,0 +1,464 @@
+Metadata-Version: 2.4
+Name: ac-core
+Version: 0.1.0
+Summary: Core library for inserting signals into Alpha Crucible Quant Supabase database
+Home-page: https://github.com/your-org/ac-core
+Author: Alpha Crucible Team
+Author-email: Alpha Crucible Team <team@alphacrucible.com>
+Maintainer-email: Alpha Crucible Team <team@alphacrucible.com>
+License: MIT
+Project-URL: Homepage, https://github.com/your-org/ac-core
+Project-URL: Documentation, https://github.com/your-org/ac-core#readme
+Project-URL: Repository, https://github.com/your-org/ac-core.git
+Project-URL: Bug Tracker, https://github.com/your-org/ac-core/issues
+Keywords: quantitative finance,trading signals,database,supabase,portfolio optimization
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Financial and Insurance Industry
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Office/Business :: Financial :: Investment
+Classifier: Topic :: Scientific/Engineering :: Information Analysis
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pandas>=1.3.0
+Requires-Dist: psycopg2-binary>=2.9.0
+Requires-Dist: python-dotenv>=0.19.0
+Provides-Extra: dev
+Requires-Dist: pytest>=6.0; extra == "dev"
+Requires-Dist: pytest-cov>=2.0; extra == "dev"
+Requires-Dist: black>=21.0; extra == "dev"
+Requires-Dist: flake8>=3.8; extra == "dev"
+Requires-Dist: mypy>=0.800; extra == "dev"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# AC Core - Signal Insertion Library
+
+A Python library for inserting trading signals into the Alpha Crucible Quant Supabase database. This library provides a simple, robust interface for signal insertion with automatic upsert functionality, data validation, and comprehensive error handling.
+
+## Features
+
+- **Easy Installation**: Install via pip with `pip install ac-core`
+- **DataFrame Support**: Insert signals directly from pandas DataFrames
+- **CSV File Support**: Insert signals from CSV files with flexible parsing options
+- **Automatic Upsert**: Replace existing signals instead of creating duplicates
+- **Data Validation**: Comprehensive validation of signal data before insertion
+- **Supabase Integration**: Optimized for Supabase PostgreSQL with SSL support
+- **Batch Processing**: Efficient batch insertion for large datasets
+- **Error Handling**: Detailed error reporting and logging
+- **Connection Management**: Automatic connection handling and reconnection
+
+## Installation
+
+### From Source (Development)
+
+```bash
+# Clone the repository
+git clone https://github.com/your-org/ac-core.git
+cd ac-core
+
+# Install in development mode
+pip install -e .
+
+# Or install with development dependencies
+pip install -e ".[dev]"
+```
+
+### From PyPI (When Published)
+
+```bash
+pip install ac-core
+```
+
+## Quick Start
+
+### 1. Environment Setup
+
+Create a `.env` file with your Supabase database credentials:
+
+```bash
+# Option 1: Use DATABASE_URL (recommended for Supabase)
+DATABASE_URL=postgresql://postgres:your-password@your-supabase-host:5432/postgres?sslmode=require
+
+# Option 2: Use individual connection parameters
+DB_HOST=your-supabase-host
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=your-password
+DB_NAME=postgres
+```
+
+### 2. Basic Usage
+
+```python
+from ac_core import SignalInserter
+from datetime import date
+import pandas as pd
+
+# Initialize the inserter
+inserter = SignalInserter()
+
+# Test connection
+if inserter.test_connection():
+    print("✅ Database connection successful")
+else:
+    print("❌ Database connection failed")
+
+# Insert a single signal
+success = inserter.insert_single_signal(
+    asof_date=date(2024, 1, 15),
+    ticker='AAPL',
+    signal_name='SENTIMENT_YT',
+    value=0.75,
+    metadata={'source': 'youtube_comments', 'confidence': 0.9}
+)
+
+if success:
+    print("✅ Signal inserted successfully")
+```
+
+### 3. Insert from DataFrame
+
+```python
+import pandas as pd
+from datetime import date
+
+# Create sample signal data
+df = pd.DataFrame({
+    'asof_date': [date(2024, 1, 15), date(2024, 1, 16), date(2024, 1, 17)],
+    'ticker': ['AAPL', 'MSFT', 'GOOGL'],
+    'signal_name': ['SENTIMENT_YT', 'SENTIMENT_YT', 'SENTIMENT_YT'],
+    'value': [0.75, 0.82, 0.68],
+    'metadata': [
+        {'source': 'youtube', 'confidence': 0.9},
+        {'source': 'youtube', 'confidence': 0.85},
+        {'source': 'youtube', 'confidence': 0.92}
+    ]
+})
+
+# Insert signals
+result = inserter.insert_from_dataframe(df)
+
+if result['success']:
+    print(f"✅ Successfully inserted {result['records_inserted']} signals")
+else:
+    print(f"❌ Insertion failed: {result['errors']}")
+```
+
+### 4. Insert from CSV File
+
+```python
+# Create a CSV file with signal data
+csv_data = """asof_date,ticker,signal_name,value,metadata
+2024-01-15,AAPL,SENTIMENT_YT,0.75,"{""source"": ""youtube"", ""confidence"": 0.9}"
+2024-01-16,MSFT,SENTIMENT_YT,0.82,"{""source"": ""youtube"", ""confidence"": 0.85}"
+2024-01-17,GOOGL,SENTIMENT_YT,0.68,"{""source"": ""youtube"", ""confidence"": 0.92}"
+"""
+
+with open('signals.csv', 'w') as f:
+    f.write(csv_data)
+
+# Insert from CSV
+result = inserter.insert_from_csv('signals.csv')
+
+if result['success']:
+    print(f"✅ Successfully inserted {result['records_inserted']} signals from CSV")
+else:
+    print(f"❌ CSV insertion failed: {result['errors']}")
+```
+
+## API Reference
+
+### SignalInserter
+
+The main class for inserting signals into the database.
+
+#### Constructor
+
+```python
+SignalInserter(
+    database_url: Optional[str] = None,
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+    user: Optional[str] = None,
+    password: Optional[str] = None,
+    database: Optional[str] = None,
+    auto_create_table: bool = True
+)
+```
+
+**Parameters:**
+- `database_url`: Full database connection URL (recommended for Supabase)
+- `host`, `port`, `user`, `password`, `database`: Individual connection parameters
+- `auto_create_table`: Whether to automatically create the signal_raw table if missing
+
+#### Methods
+
+##### `insert_from_dataframe(df, validate=True, batch_size=1000)`
+
+Insert signals from a pandas DataFrame.
+
+**Parameters:**
+- `df`: DataFrame with columns: asof_date, ticker, signal_name, value (required), metadata, created_at (optional)
+- `validate`: Whether to validate DataFrame structure before insertion
+- `batch_size`: Number of records to process in each batch
+
+**Returns:**
+```python
+{
+    'success': bool,
+    'records_processed': int,
+    'records_inserted': int,
+    'errors': List[str],
+    'warnings': List[str]
+}
+```
+
+##### `insert_from_csv(csv_path, validate=True, batch_size=1000, **pandas_kwargs)`
+
+Insert signals from a CSV file.
+
+**Parameters:**
+- `csv_path`: Path to the CSV file
+- `validate`: Whether to validate DataFrame structure before insertion
+- `batch_size`: Number of records to process in each batch
+- `**pandas_kwargs`: Additional arguments passed to `pd.read_csv()`
+
+**Returns:** Same format as `insert_from_dataframe()`
+
+##### `insert_single_signal(asof_date, ticker, signal_name, value, metadata=None)`
+
+Insert a single signal record.
+
+**Parameters:**
+- `asof_date`: Date for the signal
+- `ticker`: Stock ticker symbol
+- `signal_name`: Name of the signal
+- `value`: Signal value
+- `metadata`: Optional metadata dictionary
+
+**Returns:** `bool` - True if successful, False otherwise
+
+##### `test_connection()`
+
+Test database connection.
+
+**Returns:** `bool` - True if connection is working, False otherwise
+
+##### `get_existing_signals(tickers=None, signal_names=None, start_date=None, end_date=None)`
+
+Retrieve existing signals from the database.
+
+**Parameters:**
+- `tickers`: Optional list of ticker symbols to filter by
+- `signal_names`: Optional list of signal names to filter by
+- `start_date`: Optional start date for filtering
+- `end_date`: Optional end date for filtering
+
+**Returns:** `pd.DataFrame` with existing signal data
+
+##### `close()`
+
+Close database connection.
+
+### SignalRaw
+
+Data model for signal records.
+
+```python
+@dataclass
+class SignalRaw:
+    asof_date: date
+    ticker: str
+    signal_name: str
+    value: float
+    metadata: Optional[Dict[str, Any]] = None
+    created_at: Optional[datetime] = None
+```
+
+## Database Schema
+
+The library works with the following table structure:
+
+```sql
+CREATE TABLE signal_raw (
+    id SERIAL PRIMARY KEY,
+    asof_date DATE NOT NULL,
+    ticker VARCHAR(20) NOT NULL,
+    signal_name VARCHAR(100) NOT NULL,
+    value FLOAT NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(asof_date, ticker, signal_name)
+);
+```
+
+## Advanced Usage
+
+### Custom Connection Parameters
+
+```python
+# Using explicit connection parameters
+inserter = SignalInserter(
+    host='your-supabase-host',
+    port=5432,
+    user='postgres',
+    password='your-password',
+    database='postgres'
+)
+
+# Using database URL (recommended for Supabase)
+inserter = SignalInserter(
+    database_url='postgresql://postgres:password@host:port/db?sslmode=require'
+)
+```
+
+### Batch Processing with Custom Settings
+
+```python
+# Process large datasets in smaller batches
+result = inserter.insert_from_dataframe(
+    large_df,
+    batch_size=500,  # Smaller batches for memory efficiency
+    validate=True    # Always validate data
+)
+
+print(f"Processed {result['records_processed']} records")
+print(f"Successfully inserted {result['records_inserted']} records")
+if result['errors']:
+    print(f"Errors: {result['errors']}")
+```
+
+### CSV with Custom Parsing Options
+
+```python
+# Custom CSV parsing options
+result = inserter.insert_from_csv(
+    'signals.csv',
+    sep=';',                    # Custom separator
+    parse_dates=['asof_date'],  # Parse date column
+    encoding='utf-8',           # Specify encoding
+    na_values=['', 'NULL']      # Custom NA values
+)
+```
+
+### Checking Existing Signals
+
+```python
+# Check what signals already exist before inserting
+existing = inserter.get_existing_signals(
+    tickers=['AAPL', 'MSFT'],
+    signal_names=['SENTIMENT_YT'],
+    start_date=date(2024, 1, 1),
+    end_date=date(2024, 1, 31)
+)
+
+print(f"Found {len(existing)} existing signals")
+print(existing.head())
+```
+
+## Error Handling
+
+The library provides comprehensive error handling and logging:
+
+```python
+import logging
+
+# Enable detailed logging
+logging.basicConfig(level=logging.INFO)
+
+# Insert signals with error handling
+result = inserter.insert_from_dataframe(df)
+
+if not result['success']:
+    print("Insertion failed with errors:")
+    for error in result['errors']:
+        print(f"  - {error}")
+    
+    if result['warnings']:
+        print("Warnings:")
+        for warning in result['warnings']:
+            print(f"  - {warning}")
+```
+
+## Data Validation
+
+The library automatically validates data before insertion:
+
+```python
+from ac_core.models import DataFrameConverter
+
+# Validate DataFrame before insertion
+errors = DataFrameConverter.validate_dataframe(df)
+if errors:
+    print("Validation errors:")
+    for error in errors:
+        print(f"  - {error}")
+else:
+    print("✅ DataFrame is valid")
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make your changes and add tests
+4. Run tests: `pytest`
+5. Run linting: `black . && flake8 . && mypy .`
+6. Commit your changes: `git commit -am 'Add feature'`
+7. Push to the branch: `git push origin feature-name`
+8. Submit a pull request
+
+## Development Setup
+
+```bash
+# Clone repository
+git clone https://github.com/your-org/ac-core.git
+cd ac-core
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install in development mode
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run linting
+black .
+flake8 .
+mypy .
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For questions, issues, or contributions, please:
+
+1. Check the [documentation](https://github.com/your-org/ac-core#readme)
+2. Search [existing issues](https://github.com/your-org/ac-core/issues)
+3. Create a [new issue](https://github.com/your-org/ac-core/issues/new) if needed
+
+## Changelog
+
+### v0.1.0 (Initial Release)
+- Initial release with DataFrame and CSV insertion support
+- Supabase PostgreSQL integration
+- Automatic upsert functionality
+- Comprehensive data validation
+- Batch processing support
+- Detailed error handling and logging
