@@ -1,421 +1,172 @@
-# AC Core - Signal Insertion Library
+# AC Core - Shared Utilities Library
 
-A Python library for inserting trading signals into the Alpha Crucible Quant Supabase database. This library provides a simple, robust interface for signal insertion with automatic upsert functionality, data validation, and comprehensive error handling.
+A Python utilities library for Alpha Crucible projects. This package provides shared functionality for signal insertion, database operations, and other common utilities used across multiple repositories.
 
 ## Features
 
-- **Easy Installation**: Install via pip with `pip install ac-core`
-- **DataFrame Support**: Insert signals directly from pandas DataFrames
-- **CSV File Support**: Insert signals from CSV files with flexible parsing options
-- **Automatic Upsert**: Replace existing signals instead of creating duplicates
+- **Signal Insertion**: Insert trading signals into Supabase database from DataFrames or CSV files
+- **Database Management**: Simplified database connection and operations for PostgreSQL/Supabase
 - **Data Validation**: Comprehensive validation of signal data before insertion
-- **Supabase Integration**: Optimized for Supabase PostgreSQL with SSL support
+- **Automatic Upsert**: Replace existing signals instead of creating duplicates
 - **Batch Processing**: Efficient batch insertion for large datasets
-- **Error Handling**: Detailed error reporting and logging
-- **Connection Management**: Automatic connection handling and reconnection
 
 ## Installation
 
-### From Source (Development)
+### From Git Repository (Recommended)
 
-```bash
-# Clone the repository
-git clone https://github.com/your-org/ac-core.git
-cd ac-core
+Add to your project's `requirements.txt`:
 
-# Install in development mode
-pip install -e .
-
-# Or install with development dependencies
-pip install -e ".[dev]"
+```txt
+-e git+https://github.com/your-org/ac-core.git@main#egg=ac-core
 ```
 
-### From PyPI (When Published)
+Then install:
+```bash
+pip install -r requirements.txt
+```
+
+### Local Development (Editable Install)
+
+If you have `ac-core` cloned locally in the same parent directory:
 
 ```bash
-pip install ac-core
+# In your project directory
+pip install -e ../ac-core
+```
+
+Or add to `requirements.txt`:
+```txt
+-e ../ac-core
 ```
 
 ## Quick Start
 
-### 1. Environment Setup
-
-Create a `.env` file with your Supabase database credentials:
-
-```bash
-# Option 1: Use DATABASE_URL (recommended for Supabase)
-DATABASE_URL=postgresql://postgres:your-password@your-supabase-host:5432/postgres?sslmode=require
-
-# Option 2: Use individual connection parameters
-DB_HOST=your-supabase-host
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=your-password
-DB_NAME=postgres
-```
-
-### 2. Basic Usage
+### Signal Insertion
 
 ```python
 from ac_core import SignalInserter
 from datetime import date
 import pandas as pd
 
-# Initialize the inserter
+# Initialize with environment variables
 inserter = SignalInserter()
 
-# Test connection
-if inserter.test_connection():
-    print("✅ Database connection successful")
-else:
-    print("❌ Database connection failed")
-
 # Insert a single signal
-success = inserter.insert_single_signal(
-    asof_date=date(2024, 1, 15),
+inserter.insert_single_signal(
+    asof_date=date.today(),
     ticker='AAPL',
     signal_name='SENTIMENT_YT',
     value=0.75,
-    metadata={'source': 'youtube_comments', 'confidence': 0.9}
+    metadata={'source': 'youtube', 'confidence': 0.9}
 )
 
-if success:
-    print("✅ Signal inserted successfully")
-```
-
-### 3. Insert from DataFrame
-
-```python
-import pandas as pd
-from datetime import date
-
-# Create sample signal data
+# Insert from DataFrame
 df = pd.DataFrame({
-    'asof_date': [date(2024, 1, 15), date(2024, 1, 16), date(2024, 1, 17)],
-    'ticker': ['AAPL', 'MSFT', 'GOOGL'],
-    'signal_name': ['SENTIMENT_YT', 'SENTIMENT_YT', 'SENTIMENT_YT'],
-    'value': [0.75, 0.82, 0.68],
-    'metadata': [
-        {'source': 'youtube', 'confidence': 0.9},
-        {'source': 'youtube', 'confidence': 0.85},
-        {'source': 'youtube', 'confidence': 0.92}
-    ]
+    'asof_date': [date.today()],
+    'ticker': ['AAPL'],
+    'signal_name': ['SENTIMENT_YT'],
+    'value': [0.75]
 })
-
-# Insert signals
 result = inserter.insert_from_dataframe(df)
-
-if result['success']:
-    print(f"✅ Successfully inserted {result['records_inserted']} signals")
-else:
-    print(f"❌ Insertion failed: {result['errors']}")
-```
-
-### 4. Insert from CSV File
-
-```python
-# Create a CSV file with signal data
-csv_data = """asof_date,ticker,signal_name,value,metadata
-2024-01-15,AAPL,SENTIMENT_YT,0.75,"{""source"": ""youtube"", ""confidence"": 0.9}"
-2024-01-16,MSFT,SENTIMENT_YT,0.82,"{""source"": ""youtube"", ""confidence"": 0.85}"
-2024-01-17,GOOGL,SENTIMENT_YT,0.68,"{""source"": ""youtube"", ""confidence"": 0.92}"
-"""
-
-with open('signals.csv', 'w') as f:
-    f.write(csv_data)
 
 # Insert from CSV
 result = inserter.insert_from_csv('signals.csv')
+```
 
-if result['success']:
-    print(f"✅ Successfully inserted {result['records_inserted']} signals from CSV")
-else:
-    print(f"❌ CSV insertion failed: {result['errors']}")
+### Environment Setup
+
+Set up your database credentials via environment variables:
+
+```bash
+# Option 1: Use DATABASE_URL (recommended for Supabase)
+DATABASE_URL=postgresql://postgres:password@host:5432/postgres?sslmode=require
+
+# Option 2: Use individual connection parameters
+DB_HOST=your-host
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=your-password
+DB_NAME=postgres
 ```
 
 ## API Reference
 
 ### SignalInserter
 
-The main class for inserting signals into the database.
-
-#### Constructor
+Main class for inserting signals into the database.
 
 ```python
-SignalInserter(
-    database_url: Optional[str] = None,
-    host: Optional[str] = None,
-    port: Optional[int] = None,
-    user: Optional[str] = None,
-    password: Optional[str] = None,
-    database: Optional[str] = None,
-    auto_create_table: bool = True
+from ac_core import SignalInserter
+
+inserter = SignalInserter(
+    database_url=None,  # Optional: full connection URL
+    host=None,         # Optional: database host
+    port=None,         # Optional: database port
+    user=None,         # Optional: database user
+    password=None,     # Optional: database password
+    database=None,     # Optional: database name
+    auto_create_table=True  # Auto-create signal_raw table if missing
 )
 ```
 
-**Parameters:**
-- `database_url`: Full database connection URL (recommended for Supabase)
-- `host`, `port`, `user`, `password`, `database`: Individual connection parameters
-- `auto_create_table`: Whether to automatically create the signal_raw table if missing
-
 #### Methods
 
-##### `insert_from_dataframe(df, validate=True, batch_size=1000)`
-
-Insert signals from a pandas DataFrame.
-
-**Parameters:**
-- `df`: DataFrame with columns: asof_date, ticker, signal_name, value (required), metadata, created_at (optional)
-- `validate`: Whether to validate DataFrame structure before insertion
-- `batch_size`: Number of records to process in each batch
-
-**Returns:**
-```python
-{
-    'success': bool,
-    'records_processed': int,
-    'records_inserted': int,
-    'errors': List[str],
-    'warnings': List[str]
-}
-```
-
-##### `insert_from_csv(csv_path, validate=True, batch_size=1000, **pandas_kwargs)`
-
-Insert signals from a CSV file.
-
-**Parameters:**
-- `csv_path`: Path to the CSV file
-- `validate`: Whether to validate DataFrame structure before insertion
-- `batch_size`: Number of records to process in each batch
-- `**pandas_kwargs`: Additional arguments passed to `pd.read_csv()`
-
-**Returns:** Same format as `insert_from_dataframe()`
-
-##### `insert_single_signal(asof_date, ticker, signal_name, value, metadata=None)`
-
-Insert a single signal record.
-
-**Parameters:**
-- `asof_date`: Date for the signal
-- `ticker`: Stock ticker symbol
-- `signal_name`: Name of the signal
-- `value`: Signal value
-- `metadata`: Optional metadata dictionary
-
-**Returns:** `bool` - True if successful, False otherwise
-
-##### `test_connection()`
-
-Test database connection.
-
-**Returns:** `bool` - True if connection is working, False otherwise
-
-##### `get_existing_signals(tickers=None, signal_names=None, start_date=None, end_date=None)`
-
-Retrieve existing signals from the database.
-
-**Parameters:**
-- `tickers`: Optional list of ticker symbols to filter by
-- `signal_names`: Optional list of signal names to filter by
-- `start_date`: Optional start date for filtering
-- `end_date`: Optional end date for filtering
-
-**Returns:** `pd.DataFrame` with existing signal data
-
-##### `close()`
-
-Close database connection.
+- `insert_from_dataframe(df, validate=True, batch_size=1000)` - Insert signals from DataFrame
+- `insert_from_csv(csv_path, validate=True, batch_size=1000, **kwargs)` - Insert signals from CSV
+- `insert_single_signal(asof_date, ticker, signal_name, value, metadata=None)` - Insert single signal
+- `get_existing_signals(tickers=None, signal_names=None, start_date=None, end_date=None)` - Retrieve existing signals
+- `test_connection()` - Test database connection
+- `close()` - Close database connection
 
 ### SignalRaw
 
 Data model for signal records.
 
 ```python
-@dataclass
-class SignalRaw:
-    asof_date: date
-    ticker: str
-    signal_name: str
-    value: float
-    metadata: Optional[Dict[str, Any]] = None
-    created_at: Optional[datetime] = None
-```
+from ac_core import SignalRaw
+from datetime import date
 
-## Database Schema
-
-The library works with the following table structure:
-
-```sql
-CREATE TABLE signal_raw (
-    id SERIAL PRIMARY KEY,
-    asof_date DATE NOT NULL,
-    ticker VARCHAR(20) NOT NULL,
-    signal_name VARCHAR(100) NOT NULL,
-    value FLOAT NOT NULL,
-    metadata JSONB,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(asof_date, ticker, signal_name)
-);
-```
-
-## Advanced Usage
-
-### Custom Connection Parameters
-
-```python
-# Using explicit connection parameters
-inserter = SignalInserter(
-    host='your-supabase-host',
-    port=5432,
-    user='postgres',
-    password='your-password',
-    database='postgres'
-)
-
-# Using database URL (recommended for Supabase)
-inserter = SignalInserter(
-    database_url='postgresql://postgres:password@host:port/db?sslmode=require'
+signal = SignalRaw(
+    asof_date=date(2024, 1, 15),
+    ticker='AAPL',
+    signal_name='SENTIMENT_YT',
+    value=0.75,
+    metadata={'source': 'youtube'}
 )
 ```
 
-### Batch Processing with Custom Settings
+### DatabaseManager
+
+Low-level database operations (typically used internally by SignalInserter).
 
 ```python
-# Process large datasets in smaller batches
-result = inserter.insert_from_dataframe(
-    large_df,
-    batch_size=500,  # Smaller batches for memory efficiency
-    validate=True    # Always validate data
-)
+from ac_core import DatabaseManager
 
-print(f"Processed {result['records_processed']} records")
-print(f"Successfully inserted {result['records_inserted']} records")
-if result['errors']:
-    print(f"Errors: {result['errors']}")
+db_manager = DatabaseManager()
+db_manager.connect()
+# ... use database ...
+db_manager.disconnect()
 ```
 
-### CSV with Custom Parsing Options
+## Usage in Airflow/Docker
 
-```python
-# Custom CSV parsing options
-result = inserter.insert_from_csv(
-    'signals.csv',
-    sep=';',                    # Custom separator
-    parse_dates=['asof_date'],  # Parse date column
-    encoding='utf-8',           # Specify encoding
-    na_values=['', 'NULL']      # Custom NA values
-)
+When using in Airflow or Docker containers, add to your repo's `requirements.txt`:
+
+```txt
+-e git+https://github.com/your-org/ac-core.git@main#egg=ac-core
 ```
 
-### Checking Existing Signals
-
-```python
-# Check what signals already exist before inserting
-existing = inserter.get_existing_signals(
-    tickers=['AAPL', 'MSFT'],
-    signal_names=['SENTIMENT_YT'],
-    start_date=date(2024, 1, 1),
-    end_date=date(2024, 1, 31)
-)
-
-print(f"Found {len(existing)} existing signals")
-print(existing.head())
-```
-
-## Error Handling
-
-The library provides comprehensive error handling and logging:
-
-```python
-import logging
-
-# Enable detailed logging
-logging.basicConfig(level=logging.INFO)
-
-# Insert signals with error handling
-result = inserter.insert_from_dataframe(df)
-
-if not result['success']:
-    print("Insertion failed with errors:")
-    for error in result['errors']:
-        print(f"  - {error}")
-    
-    if result['warnings']:
-        print("Warnings:")
-        for warning in result['warnings']:
-            print(f"  - {warning}")
-```
-
-## Data Validation
-
-The library automatically validates data before insertion:
-
-```python
-from ac_core.models import DataFrameConverter
-
-# Validate DataFrame before insertion
-errors = DataFrameConverter.validate_dataframe(df)
-if errors:
-    print("Validation errors:")
-    for error in errors:
-        print(f"  - {error}")
-else:
-    print("✅ DataFrame is valid")
-```
+The Dockerfile will automatically install it during the build process.
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes and add tests
-4. Run tests: `pytest`
-5. Run linting: `black . && flake8 . && mypy .`
-6. Commit your changes: `git commit -am 'Add feature'`
-7. Push to the branch: `git push origin feature-name`
-8. Submit a pull request
+This is a shared utilities library. When adding new utilities:
 
-## Development Setup
-
-```bash
-# Clone repository
-git clone https://github.com/your-org/ac-core.git
-cd ac-core
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install in development mode
-pip install -e ".[dev]"
-
-# Run tests
-pytest
-
-# Run linting
-black .
-flake8 .
-mypy .
-```
+1. Keep functions focused and reusable
+2. Add proper documentation
+3. Update this README with usage examples
+4. Ensure compatibility with existing projects
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-For questions, issues, or contributions, please:
-
-1. Check the [documentation](https://github.com/your-org/ac-core#readme)
-2. Search [existing issues](https://github.com/your-org/ac-core/issues)
-3. Create a [new issue](https://github.com/your-org/ac-core/issues/new) if needed
-
-## Changelog
-
-### v0.1.0 (Initial Release)
-- Initial release with DataFrame and CSV insertion support
-- Supabase PostgreSQL integration
-- Automatic upsert functionality
-- Comprehensive data validation
-- Batch processing support
-- Detailed error handling and logging
+MIT License

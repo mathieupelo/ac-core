@@ -1,26 +1,24 @@
 """
-AC Core - Signal insertion library for Alpha Crucible Quant framework.
+AC Core - Shared Utilities Library
 
-This library provides a simple interface for inserting trading signals into
-the Alpha Crucible Quant Supabase database. It supports both DataFrame-based
-and CSV file-based signal insertion with automatic upsert functionality.
-
-Main Components:
-- SignalInserter: Main class for inserting signals
-- SignalRaw: Data model for signal records
-- DatabaseManager: Low-level database operations
+A utilities library for Alpha Crucible projects providing:
+- Signal insertion into Supabase database
+- Database connection management
+- Common utilities for signal processing
 
 Example Usage:
     from ac_core import SignalInserter
     
-    # Initialize with environment variables or explicit connection
+    # Initialize with environment variables
     inserter = SignalInserter()
     
-    # Insert from DataFrame
-    inserter.insert_from_dataframe(df)
-    
-    # Insert from CSV file
-    inserter.insert_from_csv('signals.csv')
+    # Insert signals
+    inserter.insert_single_signal(
+        asof_date=date.today(),
+        ticker='AAPL',
+        signal_name='SENTIMENT_YT',
+        value=0.75
+    )
 """
 
 from .models import SignalRaw
